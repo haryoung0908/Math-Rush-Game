@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Math Rush</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cute+Font&family=Jua&display=swap');
+body {
+  font-size: 20px; /* 전체 글씨 약 +5pt */
+  margin: 0;
+  font-family: 'Cute Font', 'Jua', sans-serif;
+  background: linear-gradient(135deg, #d8f3f0, #f8f5f0);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  letter-spacing: 1px;
+}
+
+.game {
+  font-family: 'Cute Font', 'Jua', sans-serif;
+  border: 3px solid #b7e4dc;
+  width: 360px;
+  padding: 20px;
+  border-radius: 20px;
+  background: #fffdf8;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+  text-align: center;
+}
+
+button {
+  font-family: 'Cute Font', 'Jua', sans-serif;
+  font-weight: bold;
+  letter-spacing: 1px;
+  margin: 5px;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  background: #b7e4dc;
+  color: #2f3e46;
+  cursor: pointer;
+  font-size: 21px; /* 버튼 글씨 +3pt */
+}
+
+button:hover { background: #95d5cc; }
+
+.question { font-size: 35px; /* 문제 글씨 +3pt */ margin: 20px 0; color: #344e41; font-weight: bold; }
+
+.choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.correct { background: #c7f9cc !important; }
+.wrong { background: #ffe5d9 !important; }
+.hidden { display: none !important; }
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background: #fffdf8;
+  padding: 20px;
+  border-radius: 15px;
+  width: 300px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+</style>
+</head>
+
+<body>
+
+<div class="game">
+
+<div id="startScreen">
+  <h1>🌿 Math Rush 🌿</h1>
+  <p>수학의 왕이 되어보자</p>
+
+  <button onclick="setDifficulty('easy')">하</button>
+  <button onclick="setDifficulty('medium')">중</button>
+  <button onclick="setDifficulty('hard')">상</button>
+
+  <button onclick="openRecordModal()">📊 기록</button>
+</div>
+
+<div id="recordModal" class="modal hidden">
+  <div class="modal-content">
+    <h3>📊 기록</h3>
+    <div id="recordList"></div>
+
+    <button onclick="closeRecordModal()">닫기</button>
+  </div>
+</div>
+
+<div id="playScreen" class="hidden">
+  <div style="display:flex; justify-content:space-between; align-items:center; font-size:22px; font-weight:bold; margin-bottom:10px;">
+  <div style="color:#1b4332;">⏱ <span id="time" style="font-size:28px;">60</span></div>
+  <div style="color:#2d6a4f;">🏆 <span id="score">0</span></div>
+</div>
+
+  <div id="question" class="question"></div>
+  <div id="choices" class="choices"></div>
+
+  🔥 x<span id="combo">0</span>
+</div>
+
+<div id="endScreen" class="hidden">
+  <h2>🎉 게임 종료 🎉</h2>
+  <p>점수: <span id="finalScore"></span></p>
+
+  <input id="nickname" placeholder="별명 입력">
+  <button onclick="saveRecord()">저장</button>
+
+  <button onclick="shareScore()">📤 점수 공유</button>
+  <button onclick="location.reload()">다시하기</button>
+</div>
+
+</div>
+
+<script>
+let score = 0;
+let time = 60;
+let combo = 0;
+let correctAnswer;
+let timer;
+let difficulty = 'easy';
+
+const correctSound = new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg');
+const wrongSound = new Audio('https://actions.google.com/sounds/v1/cartoon/boing.ogg');
+
+function setDifficulty(level) {
+  difficulty = level;
+  startGame();
+}
+
+function startGame() {
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('playScreen').classList.remove('hidden');
+
+  nextQuestion();
+
+  timer = setInterval(() => {
+    time--;
+    document.getElementById('time').textContent = time;
+    if (time <= 0) endGame();
+  }, 1000);
+}
+
+function nextQuestion() {
+  let a, b, op;
+
+  if (difficulty === 'easy') {
+    a = Math.floor(Math.random() * 10);
+    b = Math.floor(Math.random() * 10);
+    op = ['+','-'][Math.floor(Math.random()*2)];
+  }
+
+  if (difficulty === 'medium') {
+    a = Math.floor(Math.random() * 30);
+    b = Math.floor(Math.random() * 30);
+    op = ['+','-','*'][Math.floor(Math.random()*3)];
+  }
+
+  if (difficulty === 'hard') {
+    a = Math.floor(Math.random() * 100);
+    b = Math.floor(Math.random() * 50) + 1;
+    op = ['+','-','*','/'][Math.floor(Math.random()*4)];
+  }
+
+  if (op === '+') correctAnswer = a + b;
+  if (op === '-') correctAnswer = a - b;
+  if (op === '*') correctAnswer = a * b;
+  if (op === '/') {
+    correctAnswer = Math.floor(a / b);
+    a = correctAnswer * b;
+  }
+
+  document.getElementById('question').textContent = `${a} ${op} ${b}`;
+
+  let answers = [correctAnswer];
+
+  while (answers.length < 4) {
+    let wrong = correctAnswer + Math.floor(Math.random() * 10 - 5);
+    if (!answers.includes(wrong)) answers.push(wrong);
+  }
+
+  answers.sort(() => Math.random() - 0.5);
+
+  let choicesDiv = document.getElementById('choices');
+  choicesDiv.innerHTML = '';
+
+  answers.forEach(ans => {
+    let btn = document.createElement('button');
+    btn.textContent = ans;
+    btn.onclick = () => checkAnswer(btn, ans);
+    choicesDiv.appendChild(btn);
+  });
+}
+
+function checkAnswer(button, answer) {
+  if (answer === correctAnswer) {
+    score += 10 + combo * 2;
+    combo++;
+    time ++;
+    correctSound.play();
+    button.classList.add('correct');
+  } else {
+    combo = 0;
+    time --;
+    wrongSound.play();
+    button.classList.add('wrong');
+  }
+
+  document.getElementById('score').textContent = score;
+  document.getElementById('combo').textContent = combo;
+
+  setTimeout(nextQuestion, 300);
+}
+
+function endGame() {
+  clearInterval(timer);
+
+  document.getElementById('playScreen').classList.add('hidden');
+  document.getElementById('endScreen').classList.remove('hidden');
+
+  document.getElementById('finalScore').textContent = score;
+}
+
+function saveRecord() {
+  let name = document.getElementById('nickname').value || "익명";
+
+  let records = JSON.parse(localStorage.getItem('mathRush')) || [];
+
+  records.push({ name, score, date: new Date().toLocaleString() });
+
+  localStorage.setItem('mathRush', JSON.stringify(records));
+
+  alert("저장 완료!");
+  location.reload();
+}
+
+function openRecordModal() {
+  let records = JSON.parse(localStorage.getItem('mathRush')) || [];
+
+  let list = document.getElementById('recordList');
+  list.innerHTML = '';
+
+  if (records.length === 0) {
+    list.textContent = "기록이 없습니다";
+  } else {
+    records.slice().reverse().forEach(r => {
+      let div = document.createElement('div');
+      div.textContent = `${r.name} - ${r.score}점 (${r.date})`;
+      list.appendChild(div);
+    });
+  }
+
+  document.getElementById('recordModal').classList.remove('hidden');
+}
+
+function closeRecordModal() {
+  document.getElementById('recordModal').classList.add('hidden');
+}
+
+// 점수 공유
+function shareScore() {
+  const text = `내 점수는 ${score}점! 🎮 Math Rush 도전해봐!`;
+
+  if (navigator.share) {
+    navigator.share({
+      title: 'Math Rush 점수',
+      text: text
+    });
+  } else {
+    navigator.clipboard.writeText(text);
+    alert("점수가 복사됐어요! 친구에게 공유해보세요 😆");
+  }
+}
+</script>
+
+</body>
+</html>
